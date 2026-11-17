@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TAPE-4 // Vintage Lo-Fi Vocal &amp; Sample DAW</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="daw-shell">
+    <!-- Top Hardware Header & YouTube Sampler Bar -->
+    <header class="top-rack">
+      <div class="brand-block">
+        <div class="brand-badge">
+          <span class="power-led" aria-hidden="true"></span>
+          <span class="brand-title">TAPE-4</span>
+          <span class="brand-sub">LO-FI VOCAL &amp; SAMPLE DAW</span>
+        </div>
+        <div class="sample-rate-pill" id="audio-ctx-status">AUDIO ENGINE: STANDBY</div>
+      </div>
+
+      <form class="extractor-form" id="extract-form" novalidate>
+        <div class="url-input-wrap">
+          <label for="youtube-url" class="sr-only">YouTube URL</label>
+          <span class="input-prefix" aria-hidden="true">YT //</span>
+          <input
+            type="url"
+            id="youtube-url"
+            name="youtubeUrl"
+            placeholder="Paste YouTube URL (e.g. https://www.youtube.com/watch?v=...)"
+            autocomplete="off"
+            required
+          />
+        </div>
+        <button type="submit" class="btn-extract" id="extract-btn">
+          <span class="btn-spinner" aria-hidden="true"></span>
+          <span class="btn-label">Extract &amp; Load</span>
+        </button>
+      </form>
+
+      <div class="status-strip" id="status-strip" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span class="status-text" id="status-text">Ready — extract from YouTube, generate a Lo-Fi background loop below, or drop an audio file into any track.</span>
+      </div>
+    </header>
+
+    <!-- Local Project Library (Persisted Extractions & Saved Stems) -->
+    <section class="library-rack" id="library-rack" aria-label="Local Project Audio Library">
+      <div class="library-header">
+        <div class="library-title-wrap">
+          <span class="library-led" aria-hidden="true"></span>
+          <span class="rack-label">LOCAL PROJECT LIBRARY</span>
+          <span class="library-count-badge" id="library-count-badge">0 SAVED IN PROJECT</span>
+        </div>
+        <div class="library-header-controls">
+          <div class="library-filters" role="tablist" aria-label="Filter library items">
+            <button type="button" class="lib-filter-btn active" data-filter="all">ALL</button>
+            <button type="button" class="lib-filter-btn" data-filter="youtube">YT AUDIO</button>
+            <button type="button" class="lib-filter-btn" data-filter="voice">VOCALS</button>
+            <button type="button" class="lib-filter-btn" data-filter="music">INSTR</button>
+            <button type="button" class="lib-filter-btn" data-filter="lead">LEAD</button>
+            <button type="button" class="lib-filter-btn" data-filter="chorus">CHORUS</button>
+            <button type="button" class="lib-filter-btn" data-filter="beat">AI BEAT</button>
+            <button type="button" class="lib-filter-btn" data-filter="mix">MIXES</button>
+            <button type="button" class="lib-filter-btn" data-filter="crop">CROPS</button>
+          </div>
+          <label class="lib-target-field" title="Choose which track slot loads when clicking Load">
+            <span>LOAD TO</span>
+            <select id="library-target-track">
+              <option value="auto" selected>Auto (Empty)</option>
+              <option value="0">Track 01</option>
+              <option value="1">Track 02</option>
+              <option value="2">Track 03</option>
+              <option value="3">Track 04</option>
+            </select>
+          </label>
+          <button type="button" class="btn-lib-action" id="library-refresh-btn" title="Rescan ./library and ./downloads">↻ RESCAN</button>
+          <button type="button" class="btn-lib-action" id="library-toggle-btn" aria-expanded="true">▾ HIDE</button>
+        </div>
+      </div>
+      <div class="library-body" id="library-body">
+        <div class="library-empty" id="library-empty">
+          No extracted files in project yet — any YouTube URL, Voice Only, Music Only, or saved crop will stay stored locally in <code>./library/</code> across restarts.
+        </div>
+        <div class="library-list" id="library-list"></div>
+      </div>
+    </section>
+
+    <!-- Master Output & Real-Time Spectrum Visualizer -->
+    <section class="master-rack" aria-label="Master Output and Frequency Visualizer">
+      <div class="visualizer-housing">
+        <div class="housing-header">
+          <span class="rack-label">MASTER SPECTRUM ANALYZER // 20Hz – 20kHz</span>
+          <span class="meter-mode" id="peak-readout">PEAK -∞ dB</span>
+        </div>
+        <div class="canvas-bezel">
+          <canvas id="master-visualizer" width="960" height="170"></canvas>
+        </div>
+      </div>
+
+      <div class="master-controls">
+        <div class="master-title-row">
+          <span class="rack-label">MASTER BUS</span>
+          <span class="master-val" id="master-vol-val">85%</span>
+        </div>
+
+        <div class="master-fader-wrap">
+          <label for="master-volume" class="sr-only">Master Volume</label>
+          <input
+            type="range"
+            id="master-volume"
+            class="fader master-fader"
+            min="0"
+            max="1"
+            step="0.01"
+            value="0.85"
+          />
+        </div>
+
+        <div class="master-transport">
+          <button type="button" class="btn-master" id="master-play-all" title="Play all loaded tracks">
+            ▶ PLAY ALL
+          </button>
+          <button type="button" class="btn-master btn-master-stop" id="master-stop-all" title="Stop all tracks">
+            ■ STOP ALL
+          </button>
+          <button type="button" class="btn-master btn-master-bounce" id="master-bounce-btn" title="Render &amp; export full multi-track mixdown (filters, reverb, tuning &amp; levels) as stereo WAV">
+            💾 BOUNCE MIX
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lo-Fi Sample Generator Rack -->
+    <section class="generator-rack" aria-label="Lo-Fi Background Sample Generator">
+      <div class="generator-header">
+        <div class="generator-title-wrap">
+          <span class="gen-led" aria-hidden="true"></span>
+          <span class="rack-label">LO-FI BACKGROUND SAMPLE GENERATOR</span>
+          <span class="gen-badge">SYNTH &amp; LOOP BANK</span>
+        </div>
+        <div class="generator-actions">
+          <button type="button" class="btn-gen-preview" id="gen-preview-btn">▶ PREVIEW SAMPLE</button>
+          <button type="button" class="btn-gen-load" id="gen-load-btn">⚡ GENERATE &amp; LOAD TRACK</button>
+        </div>
+      </div>
+
+      <div class="generator-body">
+        <div class="preset-groups" id="gen-presets" role="radiogroup" aria-label="Lo-Fi Sample Preset">
+          <div class="preset-group">
+            <span class="preset-group-label">LO-FI</span>
+            <button type="button" class="preset-pill active" data-preset="rhodes" data-default-bpm="78" aria-checked="true">🎹 Dusty Rhodes</button>
+            <button type="button" class="preset-pill" data-preset="drums" data-default-bpm="78" aria-checked="false">🥁 Boom-Bap Drums</button>
+            <button type="button" class="preset-pill" data-preset="bass" data-default-bpm="78" aria-checked="false">🎸 Warm Bass</button>
+            <button type="button" class="preset-pill" data-preset="pad" data-default-bpm="76" aria-checked="false">🌙 Midnight Pad</button>
+            <button type="button" class="preset-pill" data-preset="vinyl" data-default-bpm="78" aria-checked="false">🌧 Vinyl Rain</button>
+          </div>
+
+          <div class="preset-group">
+            <span class="preset-group-label">CARNATIC</span>
+            <button type="button" class="preset-pill" data-preset="nadhaswaram" data-default-bpm="82" aria-checked="false">🎺 Nadhaswaram + Tanpura</button>
+            <button type="button" class="preset-pill" data-preset="mridangam" data-default-bpm="86" aria-checked="false">🪘 Mridangam Tala</button>
+            <button type="button" class="preset-pill" data-preset="carnatic_lofi" data-default-bpm="80" aria-checked="false">🪷 Modern Carnatic Lo-Fi</button>
+          </div>
+
+          <div class="preset-group">
+            <span class="preset-group-label">HOUSE &amp; ORCHESTRAL</span>
+            <button type="button" class="preset-pill" data-preset="deep_house" data-default-bpm="122" aria-checked="false">🎧 Deep House</button>
+            <button type="button" class="preset-pill" data-preset="soul_house" data-default-bpm="120" aria-checked="false">✨ Soulful House</button>
+            <button type="button" class="preset-pill" data-preset="bass_drums" data-default-bpm="118" aria-checked="false">🔊 Bass &amp; Drums</button>
+            <button type="button" class="preset-pill" data-preset="orchestral" data-default-bpm="84" aria-checked="false">🎻 Orchestral Strings &amp; Brass</button>
+          </div>
+        </div>
+
+        <div class="gen-params">
+          <label class="param-field">
+            <span>KEY</span>
+            <select id="gen-key">
+              <option value="0">C</option>
+              <option value="1">C#</option>
+              <option value="2">D</option>
+              <option value="3">Eb</option>
+              <option value="4">E</option>
+              <option value="5">F</option>
+              <option value="6">F#</option>
+              <option value="7">G</option>
+              <option value="8">Ab</option>
+              <option value="9" selected>A</option>
+              <option value="10">Bb</option>
+              <option value="11">B</option>
+            </select>
+          </label>
+
+          <label class="param-field">
+            <span>SCALE / RAGA</span>
+            <select id="gen-scale">
+              <option value="minor" selected>Minor</option>
+              <option value="major">Major</option>
+              <option value="mohanam">Raga Mohanam</option>
+              <option value="kalyani">Raga Kalyani</option>
+              <option value="mayamalavagowla">Mayamalavagowla</option>
+              <option value="charukesi">Raga Charukesi</option>
+            </select>
+          </label>
+
+          <label class="param-field">
+            <span>BPM</span>
+            <input type="number" id="gen-bpm" min="55" max="138" value="78" />
+          </label>
+
+          <label class="param-field">
+            <span>BARS</span>
+            <select id="gen-bars">
+              <option value="2">2 Bars</option>
+              <option value="4" selected>4 Bars</option>
+              <option value="8">8 Bars</option>
+            </select>
+          </label>
+
+          <label class="param-field">
+            <span>TARGET SLOT</span>
+            <select id="gen-target-track">
+              <option value="auto" selected>Auto (First Empty)</option>
+              <option value="0">Track 01</option>
+              <option value="1">Track 02</option>
+              <option value="2">Track 03</option>
+              <option value="3">Track 04</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- Drop or Paste YouTube Link to Analyze Style & Generate Matching Lo-Fi Instruments -->
+        <form class="yt-sample-drop-bar" id="yt-sample-form" novalidate>
+          <div class="url-input-wrap yt-sample-input-wrap" id="yt-sample-dropzone">
+            <span class="input-prefix yt-sample-prefix" aria-hidden="true">YT STYLE //</span>
+            <input
+              type="url"
+              id="yt-sample-url"
+              placeholder="Paste Lo-Fi YouTube URL to extract instruments, analyze BPM/Key/Groove & generate matching beats..."
+              autocomplete="off"
+            />
+          </div>
+          <select id="yt-sample-mode" class="yt-sample-select" aria-label="YouTube Sampling Mode" title="Choose whether to generate matching beats or load clean neural instruments">
+            <option value="generate_style_beat" selected>🎛 Generate Matching Beats &amp; Instruments</option>
+            <option value="raw_instruments">🎹 Load Clean Extracted Instruments Stem</option>
+            <option value="decompose_3stem">🎭 3-Stem Decompose + Generate Beat</option>
+          </select>
+          <select id="yt-sample-style-mode" class="yt-sample-select" aria-label="Generated Beat Variant" title="Style of synthesized backing beat &amp; instruments">
+            <option value="lofi_clone" selected>Style Lo-Fi Pocket</option>
+            <option value="carnatic_lofi_flip">Carnatic Lo-Fi Flip</option>
+            <option value="pure_drums_bass">Drums &amp; Sub Only</option>
+            <option value="deep_chill_house">Deep Chill House</option>
+            <option value="halftime_ambient">Half-Time Ambient</option>
+          </select>
+          <button type="submit" class="btn-yt-sample" id="yt-sample-btn">
+            <span class="btn-spinner yt-sample-spinner" aria-hidden="true"></span>
+            <span class="yt-sample-btn-label">⚡ GENERATE STYLE BEATS</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Gemini AI Remix Director Rack -->
+    <section class="remix-rack" aria-label="Gemini AI Remix Director">
+      <div class="remix-header">
+        <div class="generator-title-wrap">
+          <span class="gemini-led" aria-hidden="true"></span>
+          <span class="rack-label">GEMINI AI REMIX DIRECTOR</span>
+          <span class="gemini-badge" id="gemini-key-badge">GEMINI 3.5 FLASH</span>
+        </div>
+        <div class="remix-actions">
+          <label class="audio-aware-toggle" title="Attach downsampled 8kHz mono WAV so Gemini can hear vocal hooks, beats, and timestamps">
+            <input type="checkbox" id="gemini-send-audio" checked />
+            <span>Send Audio to Gemini</span>
+          </label>
+          <button type="button" class="btn-remix-revert" id="remix-revert-btn" title="Restore original audio on all tracks">↺ REVERT ALL</button>
+          <button type="button" class="btn-remix-play" id="remix-play-btn" title="Play included remix tracks with arrangement stagger">▶ PLAY REMIX</button>
+          <button type="button" class="btn-remix-build" id="remix-build-btn">
+            <span class="btn-spinner remix-spinner" aria-hidden="true"></span>
+            <span class="remix-btn-label">✦ BUILD REMIX WITH GEMINI</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="remix-inputs-row">
+        <div class="remix-global-wrap">
+          <label for="remix-global-prompt" class="sr-only">Global Remix Prompt</label>
+          <span class="input-prefix remix-prefix" aria-hidden="true">REMIX //</span>
+          <input
+            type="text"
+            id="remix-global-prompt"
+            placeholder="Describe the overall remix (e.g. 'Midnight lo-fi flip: take Track 1 chorus vocals, trim silences, add dusty Rhodes on Track 2')"
+          />
+        </div>
+
+        <div class="gemini-key-wrap" id="gemini-key-wrap">
+          <label for="gemini-api-key" class="sr-only">Gemini API Key</label>
+          <span class="input-prefix key-prefix" aria-hidden="true">KEY</span>
+          <input
+            type="password"
+            id="gemini-api-key"
+            placeholder="Paste GEMINI_API_KEY (or set in .env)"
+            autocomplete="off"
+          />
+        </div>
+      </div>
+
+      <div class="remix-summary-bar" id="remix-summary-bar" hidden>
+        <span class="summary-tag">GEMINI PLAN:</span>
+        <span class="summary-text" id="remix-summary-text"></span>
+      </div>
+    </section>
+
+    <!-- Component Mix Studio & Multi-Option Variations -->
+    <section class="studio-rack" id="component-studio-rack" aria-label="Component Stem Mix Studio">
+      <div class="studio-header">
+        <div class="generator-title-wrap">
+          <span class="studio-led" aria-hidden="true"></span>
+          <span class="rack-label">COMPONENT MIX STUDIO &amp; STYLE VARIATIONS</span>
+          <span class="studio-dna-badge" id="studio-dna-badge">NO STYLE ANALYZED</span>
+        </div>
+        <div class="studio-header-actions">
+          <button type="button" class="btn-studio-action" id="studio-analyze-btn" title="Separate &amp; analyze BPM, Key, Raga &amp; Drum Groove from the selected Style Reference">🧬 ANALYZE STYLE</button>
+          <button type="button" class="btn-studio-action btn-studio-beat" id="studio-gen-beat-btn" title="Synthesize a fresh style-matched Lo-Fi beat from the analyzed BPM, Key &amp; Groove">🥁 GENERATE BEAT</button>
+          <button type="button" class="btn-studio-ai" id="studio-ai-vars-btn" title="Use Gemini AI to propose 4 additional custom mix variations from your extracted components">
+            <span class="btn-spinner studio-spinner" aria-hidden="true"></span>
+            <span class="studio-ai-label">✦ GEMINI 4 MIX OPTIONS</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="studio-slots-grid">
+        <label class="param-field studio-field">
+          <span>🎙 LEAD VOCAL COMPONENT</span>
+          <select id="studio-lead-select">
+            <option value="">(None — pick extracted Lead / Voice)</option>
+          </select>
+        </label>
+
+        <label class="param-field studio-field">
+          <span>👥 CHORUS / HARMONY COMPONENT</span>
+          <select id="studio-chorus-select">
+            <option value="">(None — pick extracted Chorus / Backing)</option>
+          </select>
+        </label>
+
+        <label class="param-field studio-field">
+          <span>🎹 REFERENCE TRACK / INSTRUMENTS STYLE</span>
+          <select id="studio-ref-select">
+            <option value="">(Pick Reference Lo-Fi / Instruments)</option>
+          </select>
+        </label>
+
+        <label class="param-field studio-field studio-pitch-field">
+          <span>🎚 VOCAL KEY SHIFT</span>
+          <select id="studio-lead-pitch">
+            <option value="-5">-5 st</option>
+            <option value="-4">-4 st</option>
+            <option value="-3">-3 st</option>
+            <option value="-2">-2 st</option>
+            <option value="-1">-1 st</option>
+            <option value="0" selected>0 st (Original)</option>
+            <option value="1">+1 st</option>
+            <option value="2">+2 st</option>
+            <option value="3">+3 st</option>
+            <option value="4">+4 st</option>
+            <option value="5">+5 st</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="mix-variations-grid" id="mix-variations-grid">
+        <!-- Populated dynamically with mix recipes -->
+      </div>
+    </section>
+
+    <!-- 4-Channel Vintage Track Mixer Grid -->
+    <main class="tracks-grid" id="tracks-grid" aria-label="Audio Tracks">
+      <!-- Track modules are rendered dynamically by app.js -->
+    </main>
+  </div>
+
+  <script src="vocal-dsp.js"></script>
+  <script src="lofi-generator.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

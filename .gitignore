@@ -1,0 +1,22 @@
+# Dependencies & virtualenvs
+node_modules/
+.venv-stems/
+__pycache__/
+*.pyc
+
+# Local secrets & OS metadata
+.env
+.env.*
+!.env.example
+.DS_Store
+
+# Model weights cache & local audio / sample / stem libraries (never commit user media)
+models-cache/
+downloads/
+library/
+*.wav
+*.mp3
+*.m4a
+*.ogg
+*.flac
+*.webm
